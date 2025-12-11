@@ -191,7 +191,6 @@ export async function getExistingEvaluation(evaluatorId: number, evaluateeId: nu
 
     // Also get nominations if this is an employee peer review context (where evaluateeId might be irrelevant or used differently)
     // Actually evaluateeId is the target. For Peer Nominations, the evaluator nominates OTHERS.
-    // So we need to fetch Nominations by EvaluatorId.
     const nominations = await prisma.nomination.findMany({
         where: { nominatorId: evaluatorId },
         select: { nomineeId: true }
@@ -504,6 +503,16 @@ export async function updateEmployee(id: number, data: any) {
     return await prisma.employee.update({
         where: { id },
         data: updateData
+    });
+}
+
+export async function updatePassword(id: number, password: string) {
+    if (!password || password.length < 6) {
+        throw new Error("Password too short");
+    }
+    return await prisma.employee.update({
+        where: { id },
+        data: { password }
     });
 }
 
