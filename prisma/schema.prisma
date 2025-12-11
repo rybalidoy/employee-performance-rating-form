@@ -66,4 +66,5 @@ model EvaluationPeriod {
   year      Int      @unique
   startDate DateTime
   endDate   DateTime
+  isLocked  Boolean  @default(false) // Explicit lock state - can be toggled manually
 }

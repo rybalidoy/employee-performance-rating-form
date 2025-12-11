@@ -276,7 +276,9 @@ export async function getDashboardStats(year?: number) {
             label: k.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase()),
             rating: avg,
             weight: weight,
-            weightedScore: avg * weight
+            weightedScore: avg * weight,
+            sum: sums[k],
+            count: count
         };
     });
 
@@ -339,11 +341,20 @@ export async function getDashboardStats(year?: number) {
 
     const topPerformers = Object.values(evaluateeStats).map(stat => {
         let totalScore = 0;
+        const details: any = {};
+
         (Object.keys(WEIGHTS) as Array<keyof typeof WEIGHTS>).forEach(key => {
             const avg = stat.counts[key] > 0 ? stat.sums[key] / stat.counts[key] : 0;
             totalScore += avg * WEIGHTS[key];
+            details[key] = avg; // Store the average for this category
         });
-        return { name: stat.name, score: totalScore };
+
+        return {
+            name: stat.name,
+            score: totalScore,
+            details: details, // Return detailed breakdown
+            counts: stat.counts // Return counts for verification
+        };
     }).sort((a, b) => b.score - a.score).slice(0, 5);
 
     const safeEvaluations = evaluations.map(ev => ({
@@ -408,11 +419,61 @@ export async function setEvaluationPeriod(year: number, startDate: Date, endDate
     });
 }
 
+export async function unlockEvaluationPeriod(year: number) {
+    const currentYear = new Date().getFullYear();
+
+    // Only allow unlocking for current year
+    if (year !== currentYear) {
+        throw new Error("Can only unlock evaluation period for the current year.");
+    }
+
+    const period = await getEvaluationPeriod(year);
+    if (!period) {
+        throw new Error("No evaluation period found for this year.");
+    }
+
+    // Unlock by setting isLocked to false and extending end date
+    const newEndDate = new Date();
+    newEndDate.setDate(newEndDate.getDate() + 30);
+
+    return await prisma.evaluationPeriod.update({
+        where: { year },
+        data: {
+            isLocked: false,
+            endDate: newEndDate
+        }
+    });
+}
+
+export async function lockEvaluationPeriod(year: number) {
+    const currentYear = new Date().getFullYear();
+
+    // Only allow locking for current year
+    if (year !== currentYear) {
+        throw new Error("Can only lock evaluation period for the current year.");
+    }
+
+    const period = await getEvaluationPeriod(year);
+    if (!period) {
+        throw new Error("No evaluation period found for this year.");
+    }
+
+    // Lock the evaluation period
+    return await prisma.evaluationPeriod.update({
+        where: { year },
+        data: { isLocked: true }
+    });
+}
+
 export async function isEvaluationOpen() {
     const currentYear = new Date().getFullYear();
     const period = await getEvaluationPeriod(currentYear);
     if (!period) return true; // Default to open if not set
 
+    // Check if explicitly locked first
+    if (period.isLocked) return false;
+
+    // Then check date range
     const now = new Date();
     return now >= period.startDate && now <= period.endDate;
 }

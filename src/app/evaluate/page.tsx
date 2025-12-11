@@ -29,13 +29,22 @@ export default async function EvaluatePage({
     // Let's assume default is OPEN if current year, but LOCKED if past year?
     // Safer: dependent on admin settings. 
     // Implementation Plan: "Logic: Open if now >= startDate && now <= endDate".
+    // Check lock status from database
     let isLocked = true;
     if (period) {
-        if (now >= period.startDate && now <= period.endDate) {
-            isLocked = false;
+        // Check explicit lock state first
+        if (period.isLocked) {
+            isLocked = true;
+        } else {
+            // If not explicitly locked, check date range
+            if (now >= period.startDate && now <= period.endDate) {
+                isLocked = false;
+            } else {
+                isLocked = true; // Outside date range
+            }
         }
     } else {
-        // No period defined.
+        // No period defined
         if (selectedYear === currentYear) isLocked = false; // Default open for current
         else isLocked = true; // Default locked for others
     }

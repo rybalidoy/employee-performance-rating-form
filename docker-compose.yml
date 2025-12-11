@@ -7,6 +7,9 @@ services:
     environment:
       # Use the host name of the Postgres container on the infra_network
       - DATABASE_URL=postgresql://postgres:ryan1234@postgres:5432/employee_rating
+      # Enable file watching polling for Docker (especially on Windows)
+      - WATCHPACK_POLLING=true
+      - CHOKIDAR_USEPOLLING=true
     volumes:
       - .:/app
       - /app/node_modules
