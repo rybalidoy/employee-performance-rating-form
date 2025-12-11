@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { submitEvaluation, type EvaluationData } from "@/app/actions";
+import Toast from "./Toast";
 
 type Employee = {
     id: number;
@@ -24,6 +25,7 @@ type Props = {
 export default function EvaluationDashboard({ evaluator, evaluatee, employees, initialEvaluation, initialNominations = [], initialEvaluations = [], isLocked = false }: Props) {
     const router = useRouter();
     const [submitting, setSubmitting] = useState(false);
+    const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "warning" | "info" } | null>(null);
 
     // Admin/DivHead State: Single Evaluation form
     const [scores, setScores] = useState<Partial<EvaluationData>>(initialEvaluation || {});
@@ -68,7 +70,7 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
         4: "Very Good (Often exceeds expectations)",
         3: "Satisfactory (Meets expectations)",
         2: "Needs Improvement (Sometimes below expectations)",
-        1: "Poor (Adjusts well to changes, stays positive under pressure)"
+        1: "Poor (Frequently below expectations)"
     };
 
     const role = evaluator.role.name;
@@ -77,7 +79,7 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
         if (isLocked) return;
         // Limit entry to 5
         if (value > 5) value = 5;
-        if (value < 1) value = 1;
+        if (value < 0) value = 0;
 
         setScores(prev => ({ ...prev, [field]: value }));
     };
@@ -85,7 +87,7 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
     const handlePeerScoreChange = (nomineeId: number, field: keyof EvaluationData, value: number) => {
         if (isLocked) return;
         if (value > 5) value = 5;
-        if (value < 1) value = 1;
+        if (value < 0) value = 0;
 
         setPeerReviews((prev) => ({
             ...prev,
@@ -112,7 +114,7 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
             setPeerReviews(newPeerReviews);
         } else {
             if (nominees.length >= 5) {
-                alert("You can only nominate up to 5 peers.");
+                setToast({ message: "You can only nominate up to 5 peers.", type: "warning" });
                 return;
             }
             setNominees([...nominees, id]);
@@ -147,11 +149,13 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
                     scores,
                 });
             }
-            alert("Evaluations submitted successfully!");
-            router.push("/evaluate");
+            setToast({ message: "Evaluations submitted successfully!", type: "success" });
+            setTimeout(() => {
+                router.push("/evaluate");
+            }, 1000);
         } catch (e) {
             console.error(e);
-            alert("Error submitting evaluations");
+            setToast({ message: "Error submitting evaluations", type: "error" });
         } finally {
             setSubmitting(false);
         }
@@ -189,6 +193,64 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
                 </div>
             </div>
 
+            {/* Punctuality & Uniform Specific Rubric */}
+            <div className="bg-slate-800/80 border border-slate-700 p-4 rounded-xl text-xs space-y-2">
+                <h4 className="font-bold text-indigo-400 uppercase tracking-wider mb-2">Punctuality & Uniform Guidelines</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-1 text-slate-400">
+                    <div className="flex gap-2">
+                        <span className="font-bold text-white w-4">5:</span>
+                        <span>1x or no tardiness / complete uniform</span>
+                    </div>
+                    <div className="flex gap-2">
+                        <span className="font-bold text-white w-4">4:</span>
+                        <span>2x-3x tardy / incomplete uniform</span>
+                    </div>
+                    <div className="flex gap-2">
+                        <span className="font-bold text-white w-4">3:</span>
+                        <span>4x-5x tardy / incomplete uniform</span>
+                    </div>
+                    <div className="flex gap-2">
+                        <span className="font-bold text-white w-4">2:</span>
+                        <span>6x-7x tardy / incomplete uniform</span>
+                    </div>
+                    <div className="flex gap-2">
+                        <span className="font-bold text-white w-4">1:</span>
+                        <span>8x-9x tardy / incomplete uniform</span>
+                    </div>
+                    <div className="flex gap-2">
+                        <span className="font-bold text-white w-4">0:</span>
+                        <span>10 or more tardy / incomplete uniform</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Score Derivation Documentation */}
+            <div className="bg-slate-800/50 border border-slate-700 p-4 rounded-xl text-sm text-slate-400">
+                <p className="mb-2">
+                    <span className="font-bold text-slate-200">How Scores are Derived:</span> The Final Score is calculated using a
+                    <span className="text-indigo-400 font-semibold"> Weighted Average</span> of all assessed criteria.
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-xs mt-2">
+                    <div><span className="text-slate-300">Punctuality:</span> 10%</div>
+                    <div><span className="text-slate-300">Uniform:</span> 5%</div>
+                    <div><span className="text-slate-300">Quality of Work:</span> 30%</div>
+                    <div><span className="text-slate-300">Productivity:</span> 35%</div>
+                    <div><span className="text-slate-300">Teamwork:</span> 10%</div>
+                    <div><span className="text-slate-300">Adaptability:</span> 10%</div>
+                </div>
+                <p className="text-xs mt-2 text-slate-500">
+                    Example: (Punctuality×0.10) + (Uniform×0.05) + (Quality×0.30) + (Productivity×0.35) + (Teamwork×0.10) + (Adaptability×0.10) = Final Score
+                </p>
+            </div>
+
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    type={toast.type}
+                    onClose={() => setToast(null)}
+                />
+            )}
+
             {role === "Employee" ? (
                 <div className="space-y-6">
                     <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700">
@@ -211,42 +273,86 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
                             />
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 h-[400px] overflow-y-auto custom-scrollbar p-2 border border-slate-700/50 rounded-xl bg-slate-900/30">
-                            {filteredEmployees.map((emp) => (
-                                <div
-                                    key={emp.id}
-                                    onClick={() => toggleNominee(emp.id)}
-                                    className={`p-4 rounded-lg cursor-pointer border transition-all relative select-none ${nominees.includes(emp.id)
-                                        ? "bg-indigo-600/20 border-indigo-500 ring-1 ring-indigo-500 sticky top-0 z-10 backdrop-blur-md"
-                                        : "bg-slate-700/30 border-slate-600 hover:bg-slate-700"
-                                        } ${isLocked ? "pointer-events-none opacity-80" : ""}`}
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <div
-                                                className={`w-4 h-4 rounded-full border ${nominees.includes(emp.id)
-                                                    ? "bg-indigo-500 border-indigo-500"
-                                                    : "border-slate-400"
-                                                    }`}
-                                            ></div>
-                                            <span className="text-slate-200">
-                                                {emp.last_name}, {emp.first_name}
-                                            </span>
-                                        </div>
-                                        {nominees.includes(emp.id) && !isLocked && (
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); toggleNominee(emp.id); }}
-                                                className="text-xs bg-red-500/20 text-red-300 px-2 py-1 rounded hover:bg-red-500 hover:text-white transition-colors"
-                                            >
-                                                Remove
-                                            </button>
-                                        )}
+                        <div className="h-[500px] overflow-y-auto custom-scrollbar border border-slate-700/50 rounded-xl bg-slate-900/30 relative">
+                            {/* Dynamic Sticky Styles for up to 5 nominees */}
+
+
+                            {/* Sticky Header: Selected Nominees */}
+                            {nominees.length > 0 && (
+                                <div className="sticky top-0 z-20 bg-slate-900/95 backdrop-blur-md border-b border-indigo-500/50 p-3 shadow-lg mb-2">
+                                    <div className="flex items-center justify-between mb-2 px-2">
+                                        <h3 className="text-xs font-bold uppercase text-indigo-400 tracking-wider">
+                                            Selected ({nominees.length}/5)
+                                        </h3>
+                                        <button
+                                            onClick={() => setNominees([])}
+                                            disabled={isLocked}
+                                            className="text-xs text-slate-400 hover:text-white transition-colors"
+                                        >
+                                            Clear All
+                                        </button>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                        {nominees.map((id) => {
+                                            const emp = employees.find((e) => e.id === id);
+                                            if (!emp) return null;
+                                            return (
+                                                <div
+                                                    key={emp.id}
+                                                    onClick={() => toggleNominee(emp.id)}
+                                                    className="p-3 rounded-lg cursor-pointer bg-indigo-600/20 border border-indigo-500 ring-1 ring-indigo-500 relative group transition-all"
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-2 overflow-hidden">
+                                                            <div className="w-2 h-2 rounded-full bg-indigo-400 shrink-0"></div>
+                                                            <span className="text-slate-200 text-sm truncate font-medium">
+                                                                {emp.last_name}, {emp.first_name}
+                                                            </span>
+                                                        </div>
+                                                        {!isLocked && (
+                                                            <span className="text-indigo-300 opacity-0 group-hover:opacity-100 transition-opacity text-xs font-semibold">
+                                                                Remove
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
-                            ))}
-                            {filteredEmployees.length === 0 && (
-                                <div className="col-span-full text-center text-slate-500 py-8">No colleagues found.</div>
                             )}
+
+                            {/* Scrollable List: Available Employees */}
+                            <div className="p-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {filteredEmployees
+                                    .filter(emp => !nominees.includes(emp.id)) // Filter out selected ones (they are in header)
+                                    .map((emp) => (
+                                        <div
+                                            key={emp.id}
+                                            onClick={() => toggleNominee(emp.id)}
+                                            className={`p-4 rounded-lg cursor-pointer border transition-all relative select-none bg-slate-700/30 border-slate-600 hover:bg-slate-700 group ${isLocked ? "pointer-events-none opacity-80" : ""}`}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-4 h-4 rounded-full border border-slate-400"></div>
+                                                    <span className="text-slate-200">
+                                                        {emp.last_name}, {emp.first_name}
+                                                    </span>
+                                                </div>
+                                                {!isLocked && (
+                                                    <span className="text-slate-500 text-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        Select
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                {filteredEmployees.filter(emp => !nominees.includes(emp.id)).length === 0 && (
+                                    <div className="col-span-full text-center text-slate-500 py-8">
+                                        {nominees.length === 5 ? "Maximum nominations reached." : "No other colleagues found."}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -266,6 +372,7 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
                                                 <div>
                                                     <label className="block text-sm text-slate-400 mb-1">
                                                         Teamwork (1-5)
+                                                        <span className="block text-xs text-slate-500 font-normal">Cooperates with coworkers and contributes to group goals</span>
                                                     </label>
                                                     <input
                                                         type="number"
@@ -286,6 +393,7 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
                                                 <div>
                                                     <label className="block text-sm text-slate-400 mb-1">
                                                         Adaptability (1-5)
+                                                        <span className="block text-xs text-slate-500 font-normal">Adjusts well to changes, stays positive under pressure</span>
                                                     </label>
                                                     <input
                                                         type="number"
@@ -325,7 +433,10 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
                                 <>
                                     <tr className="hover:bg-slate-700/30">
                                         <td className="px-6 py-4 font-medium text-slate-200">
-                                            Punctuality
+                                            <div>
+                                                Punctuality
+                                                <div className="text-xs text-slate-400 font-normal mt-0.5">Reports to work on time</div>
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <input
@@ -343,7 +454,10 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
                                     </tr>
                                     <tr className="hover:bg-slate-700/30">
                                         <td className="px-6 py-4 font-medium text-slate-200">
-                                            Wearing Uniform
+                                            <div>
+                                                Wearing Uniform
+                                                <div className="text-xs text-slate-400 font-normal mt-0.5">Consistently wears proper and complete uniform</div>
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <input
@@ -369,7 +483,10 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
                                 <>
                                     <tr className="hover:bg-slate-700/30">
                                         <td className="px-6 py-4 font-medium text-slate-200">
-                                            Quality of Work
+                                            <div>
+                                                Quality of Work
+                                                <div className="text-xs text-slate-400 font-normal mt-0.5">Accuracy, neatness, attention to detail</div>
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <input
@@ -387,7 +504,10 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
                                     </tr>
                                     <tr className="hover:bg-slate-700/30">
                                         <td className="px-6 py-4 font-medium text-slate-200">
-                                            Productivity
+                                            <div>
+                                                Productivity
+                                                <div className="text-xs text-slate-400 font-normal mt-0.5">Completes task efficiently and meets deadlines</div>
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <input
