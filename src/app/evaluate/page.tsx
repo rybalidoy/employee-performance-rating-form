@@ -1,4 +1,4 @@
-import { getEmployees, getSession, getExistingEvaluation } from "../actions";
+import { getEmployees, getSession, getExistingEvaluation, getEvaluatorHistory } from "../actions";
 import BulkEvaluationTable from "@/components/BulkEvaluationTable";
 import RawDataViewer from "@/components/RawDataViewer";
 import EvaluationDashboard from "@/components/EvaluationDashboard";
@@ -14,6 +14,9 @@ export default async function EvaluatePage() {
     // Fetch full employee object for the dashboard props
     const evaluator = employees.find(e => e.id === evaluatorId);
     if (!evaluator) redirect("/login");
+
+    // Fetch history for pre-fill
+    const history = await getEvaluatorHistory(evaluatorId);
 
     if (session.role === "Employee") {
         // Employee View - Peer Review
@@ -32,6 +35,7 @@ export default async function EvaluatePage() {
                     evaluator={evaluator}
                     employees={employees}
                     initialNominations={nominations}
+                    initialEvaluations={history}
                 />
             </main>
         );
@@ -60,13 +64,20 @@ export default async function EvaluatePage() {
                 </div>
 
                 <div className="max-w-7xl mx-auto">
-                    <BulkEvaluationTable employees={employees} evaluator={evaluator} />
+                    <BulkEvaluationTable
+                        employees={employees}
+                        evaluator={evaluator}
+                        initialEvaluations={history}
+                    />
 
-                    {showRawData && evaluations && (
-                        <RawDataViewer evaluations={evaluations} />
-                    )}
-                </div>
-            </main>
+
+                    {
+                        showRawData && evaluations && (
+                            <RawDataViewer evaluations={evaluations} />
+                        )
+                    }
+                </div >
+            </main >
         );
     }
 }

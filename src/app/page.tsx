@@ -106,7 +106,7 @@ export default function Home() {
                         </div>
 
                         {/* Top Performers */}
-                        <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl overflow-hidden">
+                        <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl overflow-hidden col-span-1 lg:col-span-2">
                             <div className="flex items-center gap-2 mb-6">
                                 <div className="p-2 bg-yellow-500/10 rounded-lg text-yellow-500">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

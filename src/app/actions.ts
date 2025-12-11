@@ -193,6 +193,24 @@ export async function getExistingEvaluation(evaluatorId: number, evaluateeId: nu
     return { evaluation, nominations: nominations.map(n => n.nomineeId) };
 }
 
+export async function getEvaluatorHistory(evaluatorId: number) {
+    const currentYear = new Date().getFullYear();
+    const startOfYear = new Date(currentYear, 0, 1);
+    const endOfYear = new Date(currentYear + 1, 0, 1);
+
+    const evaluations = await prisma.evaluationForm.findMany({
+        where: {
+            evaluatorId: evaluatorId,
+            createdAt: {
+                gte: startOfYear,
+                lt: endOfYear
+            }
+        }
+    });
+
+    return evaluations;
+}
+
 export async function getDashboardStats() {
     // Fetch all evaluations
     const rawEvaluations = await prisma.evaluationForm.findMany({

@@ -14,15 +14,32 @@ type Employee = {
 type Props = {
     employees: Employee[];
     evaluator: Employee;
+    initialEvaluations?: any[]; // Using any to avoid complex type matching for now, or use mapped type
 };
 
-export default function BulkEvaluationTable({ employees, evaluator }: Props) {
+export default function BulkEvaluationTable({ employees, evaluator, initialEvaluations = [] }: Props) {
     const router = useRouter();
     const role = evaluator.role.name;
-    const [scores, setScores] = useState<Record<number, Partial<EvaluationData>>>({});
+
+    const [scores, setScores] = useState<Record<number, Partial<EvaluationData>>>(() => {
+        const initialState: Record<number, Partial<EvaluationData>> = {};
+        initialEvaluations?.forEach((ev: any) => {
+            initialState[ev.evaluateeId] = {
+                score_punctuality: ev.score_punctuality,
+                score_wearing_uniform: ev.score_wearing_uniform,
+                score_quality_of_work: ev.score_quality_of_work,
+                score_productivity: ev.score_productivity,
+                score_teamwork: ev.score_teamwork,
+                score_adaptability: ev.score_adaptability,
+                remarks: ev.remarks
+            };
+        });
+        return initialState;
+    });
+
     const [submitting, setSubmitting] = useState(false);
 
-    // Filter out the evaluator themselves from the list? Usually yes.
+    // Filter out the evaluator themselves
     const targets = employees.filter(e => e.id !== evaluator.id);
 
     const handleScoreChange = (employeeId: number, field: keyof EvaluationData, value: number) => {

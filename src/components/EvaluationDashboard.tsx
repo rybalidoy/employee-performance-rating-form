@@ -13,13 +13,14 @@ type Employee = {
 
 type Props = {
     evaluator: Employee;
-    evaluatee?: Employee; // The person being rated (for Admin/DivHead)
+    evaluatee?: Employee;
     employees: Employee[];
     initialEvaluation?: any;
     initialNominations?: number[];
+    initialEvaluations?: any[];
 };
 
-export default function EvaluationDashboard({ evaluator, evaluatee, employees, initialEvaluation, initialNominations = [] }: Props) {
+export default function EvaluationDashboard({ evaluator, evaluatee, employees, initialEvaluation, initialNominations = [], initialEvaluations = [] }: Props) {
     const router = useRouter();
     const [submitting, setSubmitting] = useState(false);
 
@@ -47,7 +48,19 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
     // Peer Search State
     const [peerSearch, setPeerSearch] = useState("");
 
-    const [peerReviews, setPeerReviews] = useState<Record<number, Partial<EvaluationData>>>({});
+    const [peerReviews, setPeerReviews] = useState<Record<number, Partial<EvaluationData>>>(() => {
+        const initialState: Record<number, Partial<EvaluationData>> = {};
+        initialEvaluations?.forEach((ev: any) => {
+            // If this evaluation has peer scores, add it.
+            if (ev.score_teamwork || ev.score_adaptability) {
+                initialState[ev.evaluateeId] = {
+                    score_teamwork: ev.score_teamwork,
+                    score_adaptability: ev.score_adaptability
+                };
+            }
+        });
+        return initialState;
+    });
 
     const RATING_DESC = {
         5: "Excellent (Always exceeds expectations)",
