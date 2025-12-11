@@ -516,3 +516,28 @@ export async function deleteEmployee(id: number) {
 export async function getRoles() {
     return await prisma.role.findMany();
 }
+
+export async function updateProfile(id: number, data: any) {
+    const session = await getSession();
+    if (!session || parseInt(session.id) !== id) {
+        throw new Error("Unauthorized");
+    }
+
+    const updateData: any = {
+        first_name: data.first_name,
+        last_name: data.last_name,
+        middle_initial: data.middle_initial,
+    };
+
+    if (data.password && data.password.trim() !== "") {
+        updateData.password = data.password;
+    }
+
+    const result = await prisma.employee.update({
+        where: { id },
+        data: updateData
+    });
+
+    revalidatePath("/profile");
+    return result;
+}

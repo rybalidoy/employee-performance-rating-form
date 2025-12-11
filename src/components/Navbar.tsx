@@ -47,6 +47,9 @@ export default async function Navbar() {
                                 <span className="text-slate-400 text-sm hidden sm:block">
                                     {session.name} ({session.role})
                                 </span>
+                                <Link href="/profile" className="text-slate-300 hover:text-white text-sm">
+                                    Profile
+                                </Link>
                                 <form action={async () => { "use server"; await logout() }}>
                                     <button className="text-sm bg-red-500/10 text-red-400 px-3 py-1 rounded hover:bg-red-500 hover:text-white transition-colors">
                                         Logout
