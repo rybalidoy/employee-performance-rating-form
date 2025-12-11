@@ -1,0 +1,12 @@
+version: '3'
+services:
+  app:
+    build: .
+    container_name: employee-performance-app
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=file:/app/prisma/dev.db
+    volumes:
+      - ./prisma/dev.db:/app/prisma/dev.db
+    restart: always

@@ -1,0 +1,62 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Role {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+  employees Employee[]
+}
+
+model Employee {
+  id                  Int              @id @default(autoincrement())
+  last_name           String
+  first_name          String
+  middle_initial      String?
+  roleId              Int
+  role                Role             @relation(fields: [roleId], references: [id])
+  username            String           @unique
+  password            String
+  
+  evaluationsGiven    EvaluationForm[] @relation("Evaluator")
+  evaluationsReceived EvaluationForm[] @relation("Evaluatee")
+  
+  nominationsGiven    Nomination[]     @relation("Nominator")
+  nominationsReceived Nomination[]     @relation("Nominee")
+}
+
+model EvaluationForm {
+  id                    Int      @id @default(autoincrement())
+  createdAt             DateTime @default(now())
+  
+  evaluatorId           Int
+  evaluator             Employee @relation("Evaluator", fields: [evaluatorId], references: [id])
+  
+  evaluateeId           Int
+  evaluatee             Employee @relation("Evaluatee", fields: [evaluateeId], references: [id])
+
+  // Ratings (1-5)
+  score_punctuality     Int? // 10% weight, Admin
+  score_wearing_uniform Int? // Admin
+  score_quality_of_work Int? // Division Head?
+  score_productivity    Int? // Division Head?
+  score_teamwork        Int? // Peer
+  score_adaptability    Int? // Peer
+  
+  remarks               String?
+}
+
+model Nomination {
+  id          Int      @id @default(autoincrement())
+  nominatorId Int
+  nominator   Employee @relation("Nominator", fields: [nominatorId], references: [id])
+  nomineeId   Int
+  nominee     Employee @relation("Nominee", fields: [nomineeId], references: [id])
+  
+  @@unique([nominatorId, nomineeId])
+}
