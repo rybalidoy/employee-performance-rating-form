@@ -27,9 +27,9 @@ export default async function EvaluatePage() {
             <main className="min-h-screen bg-slate-900 text-white p-6">
                 <div className="max-w-7xl mx-auto mb-6 flex justify-between items-center">
                     <h1 className="text-xl font-bold">Welcome, {session.name}</h1>
-                    <form action={async () => { "use server"; await import("../actions").then(m => m.logout()) }}>
+                    {/* <form action={async () => { "use server"; await import("../actions").then(m => m.logout()) }}>
                         <button className="text-sm bg-red-500/10 text-red-400 px-3 py-1 rounded hover:bg-red-500 hover:text-white transition-colors">Logout</button>
-                    </form>
+                    </form> */}
                 </div>
                 <EvaluationDashboard
                     evaluator={evaluator}
@@ -58,9 +58,9 @@ export default async function EvaluatePage() {
             <main className="min-h-screen bg-slate-900 text-white p-6">
                 <div className="max-w-7xl mx-auto mb-6 flex justify-between items-center">
                     <h1 className="text-xl font-bold">Welcome, {session.name}</h1>
-                    <form action={async () => { "use server"; await import("../actions").then(m => m.logout()) }}>
+                    {/* <form action={async () => { "use server"; await import("../actions").then(m => m.logout()) }}>
                         <button className="text-sm bg-red-500/10 text-red-400 px-3 py-1 rounded hover:bg-red-500 hover:text-white transition-colors">Logout</button>
-                    </form>
+                    </form> */}
                 </div>
 
                 <div className="max-w-7xl mx-auto">

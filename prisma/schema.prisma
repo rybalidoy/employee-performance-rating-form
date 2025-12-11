@@ -60,3 +60,10 @@ model Nomination {
   
   @@unique([nominatorId, nomineeId])
 }
+
+model EvaluationPeriod {
+  id        Int      @id @default(autoincrement())
+  year      Int      @unique
+  startDate DateTime
+  endDate   DateTime
+}

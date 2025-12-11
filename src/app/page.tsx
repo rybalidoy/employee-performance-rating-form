@@ -50,8 +50,26 @@ export default function Home() {
             </section>
 
             {/* Dashboard Stats */}
-            <section className="py-12 px-6 sm:px-12 lg:px-24 bg-slate-800/50 backdrop-blur-sm">
-                <div className="max-w-7xl mx-auto">
+            <section className="py-12 px-6 sm:px-12 lg:px-24 bg-slate-800/50 backdrop-blur-sm relative">
+                {stats.isEvaluationOngoing && (
+                    <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md rounded-3xl border border-slate-700 m-4">
+                        <div className="text-center p-8 bg-slate-800 rounded-2xl shadow-2xl border border-slate-600 max-w-md">
+                            <h3 className="text-3xl font-bold text-white mb-4">Evaluation In Progress</h3>
+                            <p className="text-slate-300 mb-6">
+                                Statistics are hidden while the evaluation period is open.
+                                Please complete your evaluations.
+                            </p>
+                            <Link
+                                href="/evaluate"
+                                className="inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+                            >
+                                Go to Evaluation
+                            </Link>
+                        </div>
+                    </div>
+                )}
+
+                <div className={`max-w-7xl mx-auto transition-all duration-500 ${stats.isEvaluationOngoing ? "filter blur-lg opacity-50 select-none pointer-events-none" : ""}`}>
                     <h2 className="text-3xl font-bold mb-8 text-slate-100 border-l-4 border-indigo-500 pl-4">Year {new Date().getFullYear()} Dashboard</h2>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
@@ -83,7 +101,6 @@ export default function Home() {
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-                        {/* Chart */}
                         {/* Chart */}
                         <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl h-[650px] col-span-1 lg:col-span-2">
                             <h3 className="text-xl font-bold text-white mb-4">Average Scores by Category</h3>
