@@ -18,9 +18,10 @@ type Props = {
     initialEvaluation?: any;
     initialNominations?: number[];
     initialEvaluations?: any[];
+    isLocked?: boolean;
 };
 
-export default function EvaluationDashboard({ evaluator, evaluatee, employees, initialEvaluation, initialNominations = [], initialEvaluations = [] }: Props) {
+export default function EvaluationDashboard({ evaluator, evaluatee, employees, initialEvaluation, initialNominations = [], initialEvaluations = [], isLocked = false }: Props) {
     const router = useRouter();
     const [submitting, setSubmitting] = useState(false);
 
@@ -73,6 +74,7 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
     const role = evaluator.role.name;
 
     const handleScoreChange = (employeeId: number, field: keyof EvaluationData, value: number) => {
+        if (isLocked) return;
         // Limit entry to 5
         if (value > 5) value = 5;
         if (value < 1) value = 1;
@@ -81,6 +83,7 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
     };
 
     const handlePeerScoreChange = (nomineeId: number, field: keyof EvaluationData, value: number) => {
+        if (isLocked) return;
         if (value > 5) value = 5;
         if (value < 1) value = 1;
 
@@ -101,6 +104,7 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
     );
 
     const toggleNominee = (id: number) => {
+        if (isLocked) return;
         if (nominees.includes(id)) {
             setNominees(nominees.filter((n) => n !== id));
             const newPeerReviews = { ...peerReviews };
@@ -116,6 +120,7 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
     };
 
     const submitAll = async () => {
+        if (isLocked) return;
         setSubmitting(true);
         try {
             if (role === "Employee") {
@@ -159,13 +164,15 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
                     <h2 className="text-2xl font-bold text-white">Welcome, {evaluator.first_name}</h2>
                     <p className="text-indigo-400 font-medium">{role} View</p>
                 </div>
-                <button
-                    onClick={submitAll}
-                    disabled={submitting}
-                    className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg shadow-green-900/20 disabled:opacity-50 transition-all"
-                >
-                    {submitting ? "Submitting..." : "Submit Evaluations"}
-                </button>
+                {!isLocked && (
+                    <button
+                        onClick={submitAll}
+                        disabled={submitting}
+                        className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg shadow-green-900/20 disabled:opacity-50 transition-all"
+                    >
+                        {submitting ? "Submitting..." : "Submit Evaluations"}
+                    </button>
+                )}
             </div>
 
             {/* Rating Scale Alert */}
@@ -197,7 +204,8 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
                             <input
                                 type="text"
                                 placeholder="Search colleagues..."
-                                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                disabled={isLocked}
+                                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-50"
                                 value={peerSearch}
                                 onChange={(e) => setPeerSearch(e.target.value)}
                             />
@@ -211,7 +219,7 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
                                     className={`p-4 rounded-lg cursor-pointer border transition-all relative select-none ${nominees.includes(emp.id)
                                         ? "bg-indigo-600/20 border-indigo-500 ring-1 ring-indigo-500 sticky top-0 z-10 backdrop-blur-md"
                                         : "bg-slate-700/30 border-slate-600 hover:bg-slate-700"
-                                        }`}
+                                        } ${isLocked ? "pointer-events-none opacity-80" : ""}`}
                                 >
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
@@ -225,7 +233,7 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
                                                 {emp.last_name}, {emp.first_name}
                                             </span>
                                         </div>
-                                        {nominees.includes(emp.id) && (
+                                        {nominees.includes(emp.id) && !isLocked && (
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); toggleNominee(emp.id); }}
                                                 className="text-xs bg-red-500/20 text-red-300 px-2 py-1 rounded hover:bg-red-500 hover:text-white transition-colors"
@@ -263,8 +271,9 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
                                                         type="number"
                                                         min="1"
                                                         max="5"
+                                                        disabled={isLocked}
                                                         value={peerReviews[id]?.score_teamwork || ""}
-                                                        className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white"
+                                                        className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white disabled:opacity-50"
                                                         onChange={(e) =>
                                                             handlePeerScoreChange(
                                                                 id,
@@ -282,8 +291,9 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
                                                         type="number"
                                                         min="1"
                                                         max="5"
+                                                        disabled={isLocked}
                                                         value={peerReviews[id]?.score_adaptability || ""}
-                                                        className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white"
+                                                        className="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white disabled:opacity-50"
                                                         onChange={(e) =>
                                                             handlePeerScoreChange(
                                                                 id,
@@ -322,8 +332,9 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
                                                 type="number"
                                                 min="1"
                                                 max="5"
+                                                disabled={isLocked}
                                                 value={scores.score_punctuality || ""}
-                                                className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-center text-white"
+                                                className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-center text-white disabled:opacity-50"
                                                 onChange={(e) =>
                                                     handleScoreChange(evaluator.id, "score_punctuality", parseInt(e.target.value))
                                                 }
@@ -339,8 +350,9 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
                                                 type="number"
                                                 min="1"
                                                 max="5"
+                                                disabled={isLocked}
                                                 value={scores.score_wearing_uniform || ""}
-                                                className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-center text-white"
+                                                className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-center text-white disabled:opacity-50"
                                                 onChange={(e) =>
                                                     handleScoreChange(
                                                         evaluator.id,
@@ -364,8 +376,9 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
                                                 type="number"
                                                 min="1"
                                                 max="5"
+                                                disabled={isLocked}
                                                 value={scores.score_quality_of_work || ""}
-                                                className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-center text-white"
+                                                className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-center text-white disabled:opacity-50"
                                                 onChange={(e) =>
                                                     handleScoreChange(evaluator.id, "score_quality_of_work", parseInt(e.target.value))
                                                 }
@@ -381,8 +394,9 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
                                                 type="number"
                                                 min="1"
                                                 max="5"
+                                                disabled={isLocked}
                                                 value={scores.score_productivity || ""}
-                                                className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-center text-white"
+                                                className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-center text-white disabled:opacity-50"
                                                 onChange={(e) =>
                                                     handleScoreChange(evaluator.id, "score_productivity", parseInt(e.target.value))
                                                 }
@@ -397,8 +411,9 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
                     <div className="p-6 border-t border-slate-700">
                         <label className="block text-sm font-medium text-slate-400 mb-2">Remarks / Comments</label>
                         <textarea
-                            className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 outline-none h-32"
+                            className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 outline-none h-32 disabled:opacity-50"
                             placeholder="Enter any additional comments here..."
+                            disabled={isLocked}
                             value={scores.remarks || ""}
                             onChange={(e) => handleScoreChange(evaluator.id, "remarks", e.target.value as any)}
                         ></textarea>

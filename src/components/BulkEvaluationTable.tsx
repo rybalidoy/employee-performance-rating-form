@@ -14,10 +14,11 @@ type Employee = {
 type Props = {
     employees: Employee[];
     evaluator: Employee;
-    initialEvaluations?: any[]; // Using any to avoid complex type matching for now, or use mapped type
+    initialEvaluations?: any[];
+    isLocked?: boolean;
 };
 
-export default function BulkEvaluationTable({ employees, evaluator, initialEvaluations = [] }: Props) {
+export default function BulkEvaluationTable({ employees, evaluator, initialEvaluations = [], isLocked = false }: Props) {
     const router = useRouter();
     const role = evaluator.role.name;
 
@@ -43,6 +44,7 @@ export default function BulkEvaluationTable({ employees, evaluator, initialEvalu
     const targets = employees.filter(e => e.id !== evaluator.id);
 
     const handleScoreChange = (employeeId: number, field: keyof EvaluationData, value: number) => {
+        if (isLocked) return;
         if (value > 5) value = 5;
         if (value < 1) value = 1;
 
@@ -56,6 +58,7 @@ export default function BulkEvaluationTable({ employees, evaluator, initialEvalu
     };
 
     const submitAll = async () => {
+        if (isLocked) return;
         setSubmitting(true);
         try {
             // Sequential submission to avoid race conditions/server overload? 
@@ -94,13 +97,15 @@ export default function BulkEvaluationTable({ employees, evaluator, initialEvalu
                     <h2 className="text-xl font-bold text-white">Bulk Evaluation ({role})</h2>
                     <p className="text-slate-400 text-sm">Enter ratings for all employees below. Scale: 1 (Poor) - 5 (Excellent)</p>
                 </div>
-                <button
-                    onClick={submitAll}
-                    disabled={submitting}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-bold transition-all disabled:opacity-50"
-                >
-                    {submitting ? "Submitting..." : "Submit All Changes"}
-                </button>
+                {!isLocked && (
+                    <button
+                        onClick={submitAll}
+                        disabled={submitting}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-bold transition-all disabled:opacity-50"
+                    >
+                        {submitting ? "Submitting..." : "Submit All Changes"}
+                    </button>
+                )}
             </div>
 
             <div className="overflow-x-auto">
@@ -138,7 +143,8 @@ export default function BulkEvaluationTable({ employees, evaluator, initialEvalu
                                             <input
                                                 type="number"
                                                 min="1" max="5"
-                                                className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-center text-white focus:ring-1 focus:ring-indigo-500 outline-none"
+                                                disabled={isLocked}
+                                                className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-center text-white focus:ring-1 focus:ring-indigo-500 outline-none disabled:opacity-50"
                                                 placeholder="-"
                                                 value={scores[emp.id]?.score_punctuality || ""}
                                                 onChange={(e) => handleScoreChange(emp.id, 'score_punctuality', parseInt(e.target.value))}
@@ -148,7 +154,8 @@ export default function BulkEvaluationTable({ employees, evaluator, initialEvalu
                                             <input
                                                 type="number"
                                                 min="1" max="5"
-                                                className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-center text-white focus:ring-1 focus:ring-indigo-500 outline-none"
+                                                disabled={isLocked}
+                                                className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-center text-white focus:ring-1 focus:ring-indigo-500 outline-none disabled:opacity-50"
                                                 placeholder="-"
                                                 value={scores[emp.id]?.score_wearing_uniform || ""}
                                                 onChange={(e) => handleScoreChange(emp.id, 'score_wearing_uniform', parseInt(e.target.value))}
@@ -162,7 +169,8 @@ export default function BulkEvaluationTable({ employees, evaluator, initialEvalu
                                             <input
                                                 type="number"
                                                 min="1" max="5"
-                                                className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-center text-white focus:ring-1 focus:ring-indigo-500 outline-none"
+                                                disabled={isLocked}
+                                                className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-center text-white focus:ring-1 focus:ring-indigo-500 outline-none disabled:opacity-50"
                                                 placeholder="-"
                                                 value={scores[emp.id]?.score_quality_of_work || ""}
                                                 onChange={(e) => handleScoreChange(emp.id, 'score_quality_of_work', parseInt(e.target.value))}
@@ -172,7 +180,8 @@ export default function BulkEvaluationTable({ employees, evaluator, initialEvalu
                                             <input
                                                 type="number"
                                                 min="1" max="5"
-                                                className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-center text-white focus:ring-1 focus:ring-indigo-500 outline-none"
+                                                disabled={isLocked}
+                                                className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-center text-white focus:ring-1 focus:ring-indigo-500 outline-none disabled:opacity-50"
                                                 placeholder="-"
                                                 value={scores[emp.id]?.score_productivity || ""}
                                                 onChange={(e) => handleScoreChange(emp.id, 'score_productivity', parseInt(e.target.value))}

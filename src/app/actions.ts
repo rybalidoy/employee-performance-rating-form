@@ -200,10 +200,10 @@ export async function getExistingEvaluation(evaluatorId: number, evaluateeId: nu
     return { evaluation, nominations: nominations.map(n => n.nomineeId) };
 }
 
-export async function getEvaluatorHistory(evaluatorId: number) {
-    const currentYear = new Date().getFullYear();
-    const startOfYear = new Date(currentYear, 0, 1);
-    const endOfYear = new Date(currentYear + 1, 0, 1);
+export async function getEvaluatorHistory(evaluatorId: number, year?: number) {
+    const targetYear = year || new Date().getFullYear();
+    const startOfYear = new Date(targetYear, 0, 1);
+    const endOfYear = new Date(targetYear + 1, 0, 1);
 
     const evaluations = await prisma.evaluationForm.findMany({
         where: {
