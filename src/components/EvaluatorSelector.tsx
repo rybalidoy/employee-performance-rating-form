@@ -26,10 +26,10 @@ export default function EvaluatorSelector({ employees }: { employees: Employee[]
     return (
         <div className="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-2xl border border-slate-700">
             <h1 className="text-3xl font-bold mb-6 text-center bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400">
-                Identify Yourself
+                Select Employee to Evaluate
             </h1>
             <p className="text-slate-400 text-center mb-6">
-                Select your name to proceed.
+                Choose an employee from the list below.
             </p>
 
             <div className="flex items-center justify-between mb-4">

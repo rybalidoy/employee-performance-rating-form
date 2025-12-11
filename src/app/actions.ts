@@ -33,6 +33,7 @@ export type EvaluationData = {
 };
 
 export async function submitEvaluation(data: any) {
+    console.log("submitEvaluation received data:", JSON.stringify(data, null, 2));
     // Check if evaluation exists for this year to Upsert
     const currentYear = new Date().getFullYear();
     const startOfYear = new Date(currentYear, 0, 1);
@@ -50,12 +51,12 @@ export async function submitEvaluation(data: any) {
     });
 
     const formData = {
-        score_punctuality: data.scores.punctuality,
-        score_wearing_uniform: data.scores.wearing_uniform,
-        score_quality_of_work: data.scores.quality_of_work,
-        score_productivity: data.scores.productivity,
-        score_teamwork: data.scores.teamwork,
-        score_adaptability: data.scores.adaptability,
+        score_punctuality: data.scores.score_punctuality,
+        score_wearing_uniform: data.scores.score_wearing_uniform,
+        score_quality_of_work: data.scores.score_quality_of_work,
+        score_productivity: data.scores.score_productivity,
+        score_teamwork: data.scores.score_teamwork,
+        score_adaptability: data.scores.score_adaptability,
         remarks: data.remarks || "",
     };
 
@@ -194,14 +195,20 @@ export async function getExistingEvaluation(evaluatorId: number, evaluateeId: nu
 
 export async function getDashboardStats() {
     // Fetch all evaluations
-    const evaluations = await prisma.evaluationForm.findMany({
+    const rawEvaluations = await prisma.evaluationForm.findMany({
         include: {
-            evaluatee: true,
-        }
+            evaluatee: {
+                select: { id: true, first_name: true, last_name: true, role: { select: { name: true } } }
+            },
+            evaluator: {
+                select: { id: true, first_name: true, last_name: true, role: { select: { name: true } } }
+            },
+        },
+        orderBy: { createdAt: 'desc' }
     });
 
     // Calculate average scores (simplified logic)
-    const totalEvaluations = evaluations.length;
+    const totalEvaluations = rawEvaluations.length;
 
 
     // Weights (Updated based on request)
@@ -213,6 +220,23 @@ export async function getDashboardStats() {
         teamwork: 0.10,
         adaptability: 0.10
     };
+
+    // ... (counts/sums logic uses forEach) ...
+
+    // Change evaluations.forEach to rawEvaluations.forEach for the rest of the function or
+    // just rename variable usage cleanly.
+
+    // Simpler: Let's keep 'evaluations' as the raw one for logic, and create 'safeEvaluations' for return.
+
+    const evaluations = rawEvaluations; // Revert variable name for logic below
+
+    // ... logic continues using 'evaluations' (Date objects) ...
+    // Note: I need to replace the sanitized map block I added. 
+    // It's cleaner to do the sanitization at the very end.
+
+
+
+
 
     // Calculate averages per category
     const sums = {
@@ -336,10 +360,16 @@ export async function getDashboardStats() {
         return { name: stat.name, score: totalScore };
     }).sort((a, b) => b.score - a.score).slice(0, 5);
 
+    const safeEvaluations = evaluations.map(ev => ({
+        ...ev,
+        createdAt: ev.createdAt.toISOString(),
+    }));
+
     return {
         totalEvaluations: currentYearEvaluations.length,
         breakdown,
         totalWeightedScore,
-        topPerformers
+        topPerformers,
+        evaluations: safeEvaluations // Return raw data for Div Head view
     };
 }

@@ -255,7 +255,7 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
                                                         onChange={(e) =>
                                                             handlePeerScoreChange(
                                                                 id,
-                                                                "teamwork", // Using correct key from EvaluationData interface
+                                                                "score_teamwork",
                                                                 parseInt(e.target.value)
                                                             )
                                                         }
@@ -274,7 +274,7 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
                                                         onChange={(e) =>
                                                             handlePeerScoreChange(
                                                                 id,
-                                                                "adaptability", // Using correct key from EvaluationData interface
+                                                                "score_adaptability",
                                                                 parseInt(e.target.value)
                                                             )
                                                         }
@@ -312,7 +312,7 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
                                                 value={scores.score_punctuality || ""}
                                                 className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-center text-white"
                                                 onChange={(e) =>
-                                                    handleScoreChange(evaluator.id, "punctuality", parseInt(e.target.value))
+                                                    handleScoreChange(evaluator.id, "score_punctuality", parseInt(e.target.value))
                                                 }
                                             />
                                         </td>
@@ -331,7 +331,7 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
                                                 onChange={(e) =>
                                                     handleScoreChange(
                                                         evaluator.id,
-                                                        "wearing_uniform",
+                                                        "score_wearing_uniform",
                                                         parseInt(e.target.value)
                                                     )
                                                 }
@@ -354,7 +354,7 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
                                                 value={scores.score_quality_of_work || ""}
                                                 className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-center text-white"
                                                 onChange={(e) =>
-                                                    handleScoreChange(evaluator.id, "quality_of_work", parseInt(e.target.value))
+                                                    handleScoreChange(evaluator.id, "score_quality_of_work", parseInt(e.target.value))
                                                 }
                                             />
                                         </td>
@@ -371,11 +371,12 @@ export default function EvaluationDashboard({ evaluator, evaluatee, employees, i
                                                 value={scores.score_productivity || ""}
                                                 className="w-full bg-slate-900 border border-slate-600 rounded px-2 py-1 text-center text-white"
                                                 onChange={(e) =>
-                                                    handleScoreChange(evaluator.id, "productivity", parseInt(e.target.value))
+                                                    handleScoreChange(evaluator.id, "score_productivity", parseInt(e.target.value))
                                                 }
                                             />
                                         </td>
                                     </tr>
+
                                 </>
                             )}
                         </tbody>

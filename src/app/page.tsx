@@ -8,12 +8,22 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 export default function Home() {
     const [stats, setStats] = useState<any>(null);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        getDashboardStats().then(setStats);
+        getDashboardStats()
+            .then((data) => {
+                console.log("Dashboard Stats loaded:", data);
+                setStats(data);
+            })
+            .catch((err) => {
+                console.error("Failed to load stats:", err);
+                setError("Failed to load dashboard statistics.");
+            });
     }, []);
 
-    if (!stats) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Loading...</div>;
+    if (error) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-red-400">{error}</div>;
+    if (!stats) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Loading stats...</div>;
 
 
     return (
@@ -143,7 +153,7 @@ export default function Home() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-700">
-                                {stats.breakdown.map((item) => (
+                                {stats.breakdown.map((item: any) => (
                                     <tr key={item.label} className="hover:bg-slate-700/30">
                                         <td className="px-6 py-4 font-medium text-slate-200">{item.label}</td>
                                         <td className="px-6 py-4 text-right text-slate-300">{item.rating.toFixed(2)}</td>

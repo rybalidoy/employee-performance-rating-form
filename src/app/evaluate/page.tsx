@@ -1,5 +1,6 @@
 import { getEmployees, getSession, getExistingEvaluation } from "../actions";
-import EvaluatorSelector from "@/components/EvaluatorSelector"; // Reuse for Evaluatee selection
+import BulkEvaluationTable from "@/components/BulkEvaluationTable";
+import RawDataViewer from "@/components/RawDataViewer";
 import EvaluationDashboard from "@/components/EvaluationDashboard";
 import { redirect } from "next/navigation";
 
@@ -35,21 +36,36 @@ export default async function EvaluatePage() {
             </main>
         );
     } else {
-        // Admin/DivHead View - Select Employee to Rate
+        // Admin/DivHead View - Bulk Rating + Raw Data for Div Head
+        // Note: Div Head sees Quality/Productivity. Admin sees Punctuality/Uniform.
+        // Handled inside BulkEvaluationTable based on role.
+
+        const showRawData = session.role === "Division Head" || session.role === "Assistant Division Head";
+        let evaluations: any[] = [];
+        if (showRawData) {
+            // We need to fetch evaluations. Since getDashboardStats returns them now, let's reuse or fetch directly.
+            // Using getDashboardStats might be heavy if we just want raw list.
+            // But we modified getDashboardStats to include it.
+            const stats = await import("../actions").then(m => m.getDashboardStats());
+            evaluations = stats.evaluations;
+        }
+
         return (
-            <main className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-6">
-                <div className="w-full max-w-md flex justify-end mb-4 absolute top-6 right-6">
+            <main className="min-h-screen bg-slate-900 text-white p-6">
+                <div className="max-w-7xl mx-auto mb-6 flex justify-between items-center">
+                    <h1 className="text-xl font-bold">Welcome, {session.name}</h1>
                     <form action={async () => { "use server"; await import("../actions").then(m => m.logout()) }}>
-                        <button className="text-sm bg-red-500/10 text-red-400 px-4 py-2 rounded-lg hover:bg-red-500 hover:text-white transition-colors">Logout</button>
+                        <button className="text-sm bg-red-500/10 text-red-400 px-3 py-1 rounded hover:bg-red-500 hover:text-white transition-colors">Logout</button>
                     </form>
                 </div>
 
-                <div className="mb-8 text-center">
-                    <h1 className="text-2xl font-bold mb-2">Welcome, {session.name}</h1>
-                    <p className="text-slate-400">Select an employee to evaluate.</p>
-                </div>
+                <div className="max-w-7xl mx-auto">
+                    <BulkEvaluationTable employees={employees} evaluator={evaluator} />
 
-                <EvaluatorSelector employees={employees} />
+                    {showRawData && evaluations && (
+                        <RawDataViewer evaluations={evaluations} />
+                    )}
+                </div>
             </main>
         );
     }
