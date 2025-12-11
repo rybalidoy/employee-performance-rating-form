@@ -218,7 +218,17 @@ export async function getEvaluatorHistory(evaluatorId: number, year?: number) {
     return evaluations;
 }
 
-export async function getDashboardStats() {
+export async function getDashboardStats(year?: number) {
+    // Weights
+    const WEIGHTS = {
+        punctuality: 0.10,
+        wearing_uniform: 0.05,
+        quality_of_work: 0.30,
+        productivity: 0.35,
+        teamwork: 0.10,
+        adaptability: 0.10
+    };
+
     // Fetch all evaluations
     const rawEvaluations = await prisma.evaluationForm.findMany({
         include: {
@@ -232,36 +242,10 @@ export async function getDashboardStats() {
         orderBy: { createdAt: 'desc' }
     });
 
-    // Calculate average scores (simplified logic)
-    const totalEvaluations = rawEvaluations.length;
-
-
-    // Weights (Updated based on request)
-    const WEIGHTS = {
-        punctuality: 0.10,
-        wearing_uniform: 0.05,
-        quality_of_work: 0.30,
-        productivity: 0.35,
-        teamwork: 0.10,
-        adaptability: 0.10
-    };
-
-    // ... (counts/sums logic uses forEach) ...
-
-    // Change evaluations.forEach to rawEvaluations.forEach for the rest of the function or
-    // just rename variable usage cleanly.
-
-    // Simpler: Let's keep 'evaluations' as the raw one for logic, and create 'safeEvaluations' for return.
-
-    const evaluations = rawEvaluations; // Revert variable name for logic below
-
-    // ... logic continues using 'evaluations' (Date objects) ...
-    // Note: I need to replace the sanitized map block I added. 
-    // It's cleaner to do the sanitization at the very end.
-
-
-
-
+    // Group by year
+    const targetYear = year || new Date().getFullYear();
+    const currentYearEvaluations = rawEvaluations.filter(e => e.createdAt.getFullYear() === targetYear);
+    const evaluations = currentYearEvaluations; // For compatibility
 
     // Calculate averages per category
     const sums = {
@@ -275,25 +259,7 @@ export async function getDashboardStats() {
 
     const counts = { ...sums };
 
-    // Helper to calculate weighted score for a single evaluation (or aggregated per person)
-    const calculateWeightedScore = (scores: Partial<Record<keyof typeof WEIGHTS, number>>) => {
-        let score = 0;
-        let maxPotentialWeight = 0;
-
-        (Object.keys(WEIGHTS) as Array<keyof typeof WEIGHTS>).forEach(key => {
-            if (scores[key]) {
-                score += scores[key]! * WEIGHTS[key];
-                maxPotentialWeight += WEIGHTS[key];
-            }
-        });
-
-        // Normalize if not all fields are present? 
-        // For now, assuming raw accumulative score, but correctly it should be relative to what was rated.
-        // However, usually performance ratings align on a fixed 5.0 scale.
-        return score;
-    };
-
-    evaluations.forEach((ev: any) => {
+    currentYearEvaluations.forEach((ev: any) => {
         if (ev.score_punctuality) { sums.punctuality += ev.score_punctuality; counts.punctuality++; }
         if (ev.score_wearing_uniform) { sums.wearing_uniform += ev.score_wearing_uniform; counts.wearing_uniform++; }
         if (ev.score_quality_of_work) { sums.quality_of_work += ev.score_quality_of_work; counts.quality_of_work++; }
@@ -316,10 +282,6 @@ export async function getDashboardStats() {
     });
 
     const totalWeightedScore = breakdown.reduce((acc, curr) => acc + curr.weightedScore, 0);
-
-    // Group by year? Request says "dashboard for the current year"
-    const currentYear = new Date().getFullYear();
-    const currentYearEvaluations = evaluations.filter(e => e.createdAt.getFullYear() === currentYear);
 
     // Calculate Top Performers
     // We need to group evaluations by evaluatee
@@ -392,13 +354,41 @@ export async function getDashboardStats() {
 
     const isOpen = await isEvaluationOpen();
 
+    // --- Trend Analysis (Year over Year) ---
+    const yearlyStats: Record<number, { sum: number, count: number }> = {};
+
+    rawEvaluations.forEach((ev: any) => {
+        const year = ev.createdAt.getFullYear();
+        if (!yearlyStats[year]) {
+            yearlyStats[year] = { sum: 0, count: 0 };
+        }
+
+        // Calculate score for this eval
+        let score = 0;
+        if (ev.score_punctuality) score += ev.score_punctuality * WEIGHTS.punctuality;
+        if (ev.score_wearing_uniform) score += ev.score_wearing_uniform * WEIGHTS.wearing_uniform;
+        if (ev.score_quality_of_work) score += ev.score_quality_of_work * WEIGHTS.quality_of_work;
+        if (ev.score_productivity) score += ev.score_productivity * WEIGHTS.productivity;
+        if (ev.score_teamwork) score += ev.score_teamwork * WEIGHTS.teamwork;
+        if (ev.score_adaptability) score += ev.score_adaptability * WEIGHTS.adaptability;
+
+        yearlyStats[year].sum += score;
+        yearlyStats[year].count += 1;
+    });
+
+    const trend = Object.entries(yearlyStats).map(([year, data]) => ({
+        year: parseInt(year),
+        score: data.count > 0 ? data.sum / data.count : 0
+    })).sort((a, b) => a.year - b.year);
+
     return {
         totalEvaluations: currentYearEvaluations.length,
         breakdown,
         totalWeightedScore,
         topPerformers,
-        evaluations: safeEvaluations, // Return raw data for Div Head view
-        isEvaluationOngoing: isOpen
+        evaluations: safeEvaluations,
+        isEvaluationOngoing: isOpen,
+        trend // New field
     };
 }
 

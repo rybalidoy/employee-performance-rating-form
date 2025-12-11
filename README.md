@@ -5,6 +5,14 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 First, run the development server:
 
 ```bash
+bun install
+bun prisma migrate dev
+bun prisma generate
+bun run prisma/seed.ts
+bun dev
+```
+
+```bash
 npm run dev
 # or
 yarn dev

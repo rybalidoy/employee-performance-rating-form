@@ -3,28 +3,56 @@
 import { getDashboardStats } from "./actions";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
 
 
 export default function Home() {
     const [stats, setStats] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
+    const [year, setYear] = useState(new Date().getFullYear());
 
     useEffect(() => {
-        getDashboardStats()
+        const stored = localStorage.getItem("dashboardYear");
+        if (stored) {
+            setYear(parseInt(stored));
+        }
+    }, []);
+
+    useEffect(() => {
+        setStats(null); // Show loading between Switches
+        getDashboardStats(year)
             .then((data) => {
-                console.log("Dashboard Stats loaded:", data);
+                console.log("Dashboard Stats loaded for", year, data);
                 setStats(data);
             })
             .catch((err) => {
                 console.error("Failed to load stats:", err);
                 setError("Failed to load dashboard statistics.");
             });
-    }, []);
+    }, [year]);
+
+    const handleYearChange = (newYear: number) => {
+        setYear(newYear);
+        localStorage.setItem("dashboardYear", newYear.toString());
+    };
+
+    const handleReset = () => {
+        const current = new Date().getFullYear();
+        setYear(current);
+        localStorage.setItem("dashboardYear", current.toString());
+    };
 
     if (error) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-red-400">{error}</div>;
-    if (!stats) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Loading stats...</div>;
 
+    // Simple Loading State
+    if (!stats) return (
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">
+            <div className="flex flex-col items-center gap-2">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
+                <span>Loading...</span>
+            </div>
+        </div>
+    );
 
     return (
         <main className="min-h-screen bg-slate-900 text-white font-sans selection:bg-indigo-500 selection:text-white">
@@ -51,7 +79,7 @@ export default function Home() {
 
             {/* Dashboard Stats */}
             <section className="py-12 px-6 sm:px-12 lg:px-24 bg-slate-800/50 backdrop-blur-sm relative">
-                {stats.isEvaluationOngoing && (
+                {stats.isEvaluationOngoing && year === new Date().getFullYear() && (
                     <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md rounded-3xl border border-slate-700 m-4">
                         <div className="text-center p-8 bg-slate-800 rounded-2xl shadow-2xl border border-slate-600 max-w-md">
                             <h3 className="text-3xl font-bold text-white mb-4">Evaluation In Progress</h3>
@@ -69,8 +97,47 @@ export default function Home() {
                     </div>
                 )}
 
-                <div className={`max-w-7xl mx-auto transition-all duration-500 ${stats.isEvaluationOngoing ? "filter blur-lg opacity-50 select-none pointer-events-none" : ""}`}>
-                    <h2 className="text-3xl font-bold mb-8 text-slate-100 border-l-4 border-indigo-500 pl-4">Year {new Date().getFullYear()} Dashboard</h2>
+                <div className={`max-w-7xl mx-auto transition-all duration-500 ${stats.isEvaluationOngoing && year === new Date().getFullYear() ? "filter blur-lg opacity-50 select-none pointer-events-none" : ""}`}>
+
+                    <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
+                        <h2 className="text-3xl font-bold text-slate-100 border-l-4 border-indigo-500 pl-4">
+                            Year {year} Dashboard
+                        </h2>
+
+                        <div className="flex items-center gap-4 bg-slate-800 p-2 rounded-lg border border-slate-700 shadow-lg">
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={() => handleYearChange(year - 1)}
+                                    className="p-2 hover:bg-slate-700 rounded-md text-slate-400 hover:text-white transition-colors"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                </button>
+                                <span className="font-bold text-xl px-2 min-w-[4rem] text-center">{year}</span>
+                                <button
+                                    onClick={() => handleYearChange(year + 1)}
+                                    className="p-2 hover:bg-slate-700 rounded-md text-slate-400 hover:text-white transition-colors"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            {year !== new Date().getFullYear() && (
+                                <>
+                                    <div className="w-px h-6 bg-slate-600 mx-2"></div>
+                                    <button
+                                        onClick={handleReset}
+                                        className="text-xs font-semibold uppercase tracking-wider text-indigo-400 hover:text-indigo-300 transition-colors"
+                                    >
+                                        Reset
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
                         {/* Stat Card 1 */}
@@ -100,15 +167,31 @@ export default function Home() {
                         </div>
                     </div>
 
+                    {/* Performance Trend Chart */}
+                    <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl mb-12 h-[400px]">
+                        <h3 className="text-xl font-bold text-white mb-4">Company Performance Trends (Year-over-Year)</h3>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={stats.trend} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                                <XAxis dataKey="year" stroke="#94a3b8" />
+                                <YAxis domain={[0, 5]} stroke="#94a3b8" />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#fff' }}
+                                />
+                                <Line type="monotone" dataKey="score" stroke="#8b5cf6" strokeWidth={3} dot={{ r: 6, fill: "#8b5cf6" }} activeDot={{ r: 8 }} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
                         {/* Chart */}
-                        <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl h-[650px] col-span-1 lg:col-span-2">
+                        <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl h-[650px] col-span-1 lg:col-span-1">
                             <h3 className="text-xl font-bold text-white mb-4">Average Scores by Category</h3>
-                            <ResponsiveContainer width="100%" height="100%" minHeight={600}>
-                                <BarChart data={stats.breakdown} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+                            <ResponsiveContainer width="100%" height="100%" minHeight={400}>
+                                <BarChart data={stats.breakdown} layout="vertical" margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                                     <XAxis type="number" domain={[0, 5]} stroke="#94a3b8" />
-                                    <YAxis dataKey="label" type="category" width={100} stroke="#94a3b8" tick={{ fontSize: 12 }} />
+                                    <YAxis dataKey="label" type="category" width={100} stroke="#94a3b8" tick={{ fontSize: 11 }} />
                                     <Tooltip
                                         contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#fff' }}
                                         cursor={{ fill: '#334155', opacity: 0.4 }}
@@ -123,7 +206,7 @@ export default function Home() {
                         </div>
 
                         {/* Top Performers */}
-                        <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl overflow-hidden col-span-1 lg:col-span-2">
+                        <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-xl overflow-hidden col-span-1 lg:col-span-1">
                             <div className="flex items-center gap-2 mb-6">
                                 <div className="p-2 bg-yellow-500/10 rounded-lg text-yellow-500">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -182,7 +265,7 @@ export default function Home() {
                         </table>
                     </div>
                 </div>
-            </section>
-        </main>
+            </section >
+        </main >
     );
 }
