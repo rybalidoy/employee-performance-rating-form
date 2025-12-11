@@ -1,4 +1,4 @@
-version: '3'
+version: '3.8'
 services:
   app:
     build: .
@@ -6,7 +6,31 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - DATABASE_URL=file:/app/prisma/dev.db
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/employee_rating
     volumes:
-      - ./prisma/dev.db:/app/prisma/dev.db
+      - .:/app
+      - /app/node_modules
+    command: >
+      sh -c "bun install &&
+             bun x prisma generate &&
+             bun x prisma db push &&
+             bun run dev"
+    depends_on:
+      - db
     restart: always
+
+  db:
+    image: postgres:15-alpine
+    container_name: employee-performance-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: employee_rating
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: always
+
+volumes:
+  postgres_data:
