@@ -8,10 +8,12 @@ type Props = {
     initialStartDate?: Date;
     initialEndDate?: Date;
     initialIsLocked?: boolean;
+    initialIsManuallyUnlocked?: boolean;
+    initialIsManuallyLocked?: boolean;
     year: number;
 };
 
-export default function AdminSettingsForm({ initialStartDate, initialEndDate, initialIsLocked = false, year }: Props) {
+export default function AdminSettingsForm({ initialStartDate, initialEndDate, initialIsLocked = false, initialIsManuallyUnlocked = false, initialIsManuallyLocked = false, year }: Props) {
     const [startDate, setStartDate] = useState(initialStartDate ? new Date(initialStartDate).toISOString().split('T')[0] : "");
     const [endDate, setEndDate] = useState(initialEndDate ? new Date(initialEndDate).toISOString().split('T')[0] : "");
     const [saving, setSaving] = useState(false);
@@ -23,6 +25,11 @@ export default function AdminSettingsForm({ initialStartDate, initialEndDate, in
 
     // Check lock state from database
     const isLocked = initialIsLocked;
+    const isManuallyUnlocked = initialIsManuallyUnlocked;
+    const isManuallyLocked = initialIsManuallyLocked;
+
+    // Derived effective state for UI
+    const isSystemLocked = isLocked || isManuallyLocked;
 
     // Auto-adjust dates when one changes to prevent invalid ranges
     const handleStartDateChange = (newStartDate: string) => {
@@ -72,14 +79,14 @@ export default function AdminSettingsForm({ initialStartDate, initialEndDate, in
     };
 
     const handleUnlock = async () => {
-        if (!confirm("This will unlock the evaluation period and extend the end date by 30 days from today. Continue?")) {
+        if (!confirm("This will unlock the evaluation period for the current year. Continue?")) {
             return;
         }
 
         setToggling(true);
         try {
             await unlockEvaluationPeriod(year);
-            alert("Evaluation period unlocked successfully. End date extended by 30 days.");
+            alert("Evaluation period unlocked successfully.");
             router.refresh();
         } catch (e: any) {
             console.error(e);
@@ -121,18 +128,34 @@ export default function AdminSettingsForm({ initialStartDate, initialEndDate, in
                     </button>
                 </div>
 
-                {isLocked && (
+                {isManuallyLocked && (
                     <div className="ml-auto flex items-center gap-2">
                         <span className="text-xs bg-red-500/20 text-red-400 px-3 py-1 rounded-full border border-red-500/50 font-semibold">
-                            🔒 Locked
+                            🔒 Manually Locked
                         </span>
                     </div>
                 )}
 
-                {!isLocked && (
+                {!isManuallyLocked && isLocked && (
+                    <div className="ml-auto flex items-center gap-2">
+                        <span className="text-xs bg-amber-500/20 text-amber-400 px-3 py-1 rounded-full border border-amber-500/50 font-semibold">
+                            🔒 Auto Locked (Ended)
+                        </span>
+                    </div>
+                )}
+
+                {!isSystemLocked && isManuallyUnlocked && (
+                    <div className="ml-auto flex items-center gap-2">
+                        <span className="text-xs bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full border border-blue-500/50 font-semibold">
+                            🔓 Manually Unlocked
+                        </span>
+                    </div>
+                )}
+
+                {!isSystemLocked && !isManuallyUnlocked && (
                     <div className="ml-auto flex items-center gap-2">
                         <span className="text-xs bg-green-500/20 text-green-400 px-3 py-1 rounded-full border border-green-500/50 font-semibold">
-                            🔓 Unlocked
+                            ⏰ Open (Date Range)
                         </span>
                     </div>
                 )}
@@ -143,12 +166,12 @@ export default function AdminSettingsForm({ initialStartDate, initialEndDate, in
                     <label className="block text-sm font-medium text-slate-400 mb-2">Start Date</label>
                     <input
                         type="date"
-                        className={`w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 outline-none ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 outline-none ${isSystemLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                         value={startDate}
                         onChange={(e) => handleStartDateChange(e.target.value)}
-                        disabled={isLocked}
+                        disabled={isSystemLocked}
                     />
-                    {isLocked && (
+                    {isSystemLocked && (
                         <p className="text-xs text-slate-500 mt-1">Disabled: Evaluation period is locked</p>
                     )}
                 </div>
@@ -156,12 +179,12 @@ export default function AdminSettingsForm({ initialStartDate, initialEndDate, in
                     <label className="block text-sm font-medium text-slate-400 mb-2">End Date</label>
                     <input
                         type="date"
-                        className={`w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 outline-none ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-indigo-500 outline-none ${isSystemLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                         value={endDate}
                         onChange={(e) => handleEndDateChange(e.target.value)}
-                        disabled={isLocked}
+                        disabled={isSystemLocked}
                     />
-                    {isLocked && (
+                    {isSystemLocked && (
                         <p className="text-xs text-slate-500 mt-1">Disabled: Evaluation period is locked</p>
                     )}
                 </div>
@@ -170,7 +193,7 @@ export default function AdminSettingsForm({ initialStartDate, initialEndDate, in
             <div className="flex gap-4 flex-wrap">
                 <button
                     onClick={handleSave}
-                    disabled={saving || isLocked}
+                    disabled={saving || isSystemLocked}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {saving ? "Saving..." : "Save Settings"}
@@ -178,7 +201,7 @@ export default function AdminSettingsForm({ initialStartDate, initialEndDate, in
 
                 {isCurrentYear && (
                     <>
-                        {isLocked ? (
+                        {isSystemLocked ? (
                             <button
                                 onClick={handleUnlock}
                                 disabled={toggling}
@@ -216,10 +239,14 @@ export default function AdminSettingsForm({ initialStartDate, initialEndDate, in
             {isCurrentYear && (
                 <div className="bg-blue-500/10 border border-blue-500/30 p-4 rounded-lg text-sm text-blue-300">
                     <strong>Lock/Unlock Controls:</strong>
-                    {isLocked ? (
-                        <> The evaluation period is currently locked. Click "Unlock Period" to allow submissions and extend the end date by 30 days.</>
+                    {isManuallyLocked ? (
+                        <> The evaluation period is <strong>manually locked</strong>. Users cannot submit. Unlock to allow access.</>
+                    ) : isLocked ? (
+                        <> The evaluation period is <strong>auto-locked</strong> (date ended). Unlock to force it open.</>
+                    ) : isManuallyUnlocked ? (
+                        <> The evaluation period is <strong>manually forced open</strong>. Lock to close it.</>
                     ) : (
-                        <> The evaluation period is currently open. Click "Lock Period" to prevent new submissions.</>
+                        <> The evaluation period is currently <strong>open</strong> based on dates. Lock to manually close it.</>
                     )}
                 </div>
             )}

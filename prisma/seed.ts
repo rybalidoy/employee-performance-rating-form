@@ -73,6 +73,19 @@ async function main() {
         });
     }
 
+    // Evaluation Period
+    const currentYear = new Date().getFullYear();
+    await prisma.evaluationPeriod.upsert({
+        where: { year: currentYear },
+        update: {},
+        create: {
+            year: currentYear,
+            startDate: new Date(currentYear, 10, 1), // Nov 1
+            endDate: new Date(currentYear, 10, 30),  // Nov 30
+            isLocked: false,
+        },
+    });
+
     console.log("Seeding completed.");
 }
 

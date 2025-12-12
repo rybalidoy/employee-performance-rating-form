@@ -37,7 +37,6 @@ export async function submitEvaluation(data: any) {
 
     const isOpen = await isEvaluationOpen();
     if (!isOpen) {
-        // Allow Admins to override? Maybe not for now. Strict locking.
         throw new Error("Evaluation period is closed.");
     }
 
@@ -84,30 +83,72 @@ export async function submitEvaluation(data: any) {
         });
     }
 
-    // Handle Peer Nominations (Upsert logic: delete old, create new?)
-    // For simplicity: Delete all nominations from this evaluator -> recreate
-    if (data.nominees && data.nominees.length > 0) {
-        // First, remove existing nominations by this evaluator (optional: or just strictly upsert)
-        // Since nominations are just links, safer to wipe and write if the list changed.
-        // But user said "Upsert entries". Let's assume nominations are part of the evaluator's "session".
+    revalidatePath("/");
+    revalidatePath("/evaluate");
+}
 
-        // Better approach: Nomination is many-to-many. 
-        // Checking if we need to remove unchecked ones. 
-        // Let's just create new ones that don't exist.
-        // A full sync is safer:
-        await prisma.nomination.deleteMany({
-            where: { nominatorId: data.evaluatorId }
-        });
+export async function submitNominees(evaluatorId: number, nominees: number[], scores: Record<number, any>) {
+    const isOpen = await isEvaluationOpen();
+    if (!isOpen) {
+        throw new Error("Evaluation period is closed.");
+    }
 
+    // 1. Update/Overwrite Nominations
+    await prisma.nomination.deleteMany({
+        where: { nominatorId: evaluatorId }
+    });
+
+    if (nominees && nominees.length > 0) {
         await prisma.nomination.createMany({
-            data: data.nominees.map((nomineeId: number) => ({
-                nominatorId: data.evaluatorId,
+            data: nominees.map((nomineeId: number) => ({
+                nominatorId: evaluatorId,
                 nomineeId,
             })),
         });
     }
 
-    revalidatePath("/");
+    // 2. Save Scores for Nominees (Teamwork/Adaptability) provided in 'scores' map
+    // We iterate over the nominees to save their specific peer scores
+    const currentYear = new Date().getFullYear();
+    const startOfYear = new Date(currentYear, 0, 1);
+    const endOfYear = new Date(currentYear + 1, 0, 1);
+
+    for (const nomineeId of nominees) {
+        const nomineeScores = scores[nomineeId];
+        if (!nomineeScores) continue;
+
+        const existingEvaluation = await prisma.evaluationForm.findFirst({
+            where: {
+                evaluatorId: evaluatorId,
+                evaluateeId: nomineeId,
+                createdAt: {
+                    gte: startOfYear,
+                    lt: endOfYear
+                }
+            }
+        });
+
+        const formData = {
+            score_teamwork: nomineeScores.score_teamwork,
+            score_adaptability: nomineeScores.score_adaptability
+        };
+
+        if (existingEvaluation) {
+            await prisma.evaluationForm.update({
+                where: { id: existingEvaluation.id },
+                data: formData
+            });
+        } else {
+            await prisma.evaluationForm.create({
+                data: {
+                    evaluatorId,
+                    evaluateeId: nomineeId,
+                    ...formData
+                },
+            });
+        }
+    }
+
     revalidatePath("/evaluate");
 }
 
@@ -429,18 +470,30 @@ export async function unlockEvaluationPeriod(year: number) {
 
     const period = await getEvaluationPeriod(year);
     if (!period) {
-        throw new Error("No evaluation period found for this year.");
+        // Create default period if missing
+        return await prisma.evaluationPeriod.create({
+            data: {
+                year,
+                startDate: new Date(year, 10, 1),
+                endDate: new Date(year, 10, 30),
+                isLocked: false,
+                isManuallyUnlocked: true
+            }
+        });
     }
 
-    // Unlock by setting isLocked to false and extending end date
-    const newEndDate = new Date();
-    newEndDate.setDate(newEndDate.getDate() + 30);
+    // Unlock:
+    // 1. Clear isLocked (Auto/System lock)
+    // 2. Clear isManuallyLocked (Force lock)
+    // 3. Set isManuallyUnlocked = true (Allow bypass of date check)
+    // 4. PRESERVE DATES (Do not reset or extend)
 
     return await prisma.evaluationPeriod.update({
         where: { year },
         data: {
             isLocked: false,
-            endDate: newEndDate
+            isManuallyLocked: false,
+            isManuallyUnlocked: true
         }
     });
 }
@@ -455,27 +508,71 @@ export async function lockEvaluationPeriod(year: number) {
 
     const period = await getEvaluationPeriod(year);
     if (!period) {
-        throw new Error("No evaluation period found for this year.");
+        // Create default period if missing (starts as locked)
+        return await prisma.evaluationPeriod.create({
+            data: {
+                year,
+                startDate: new Date(year, 10, 1),
+                endDate: new Date(year, 10, 30),
+                isLocked: true,
+                isManuallyUnlocked: false
+            }
+        });
     }
 
-    // Lock the evaluation period
+    // Manual Lock:
+    // Set isManuallyLocked = true.
+    // We also set isLocked = true for good measure, and clear isManuallyUnlocked.
     return await prisma.evaluationPeriod.update({
         where: { year },
-        data: { isLocked: true }
+        data: {
+            isManuallyLocked: true,
+            isLocked: true,
+            isManuallyUnlocked: false
+        }
     });
 }
 
+// Check if evaluation is open based on locking rules
+// Priority: isManuallyLocked > isLocked > Date Range
 export async function isEvaluationOpen() {
     const currentYear = new Date().getFullYear();
     const period = await getEvaluationPeriod(currentYear);
-    if (!period) return true; // Default to open if not set
+    if (!period) return true; // Default behavior if no period? Or false? Assuming open if undefined for now, or maybe false. 
+    // Actually, if no period, let's say it's open or let the calling code decide. 
+    // Existing code returned true.
 
-    // Check if explicitly locked first
+    // 1. Highest Priority: Manual Force Lock
+    if (period.isManuallyLocked) return false;
+
+    // 2. System/Auto Lock
     if (period.isLocked) return false;
 
-    // Then check date range
+    // 3. Date Range & Auto-Lock
     const now = new Date();
-    return now >= period.startDate && now <= period.endDate;
+
+    // Check if explicitly unlocked overrides date check
+    if (period.isManuallyUnlocked) {
+        // Even if past end date, it's open because it was manually unlocked
+        return true;
+    }
+
+    if (now > period.endDate) {
+        // Auto-lock trigger
+        // We should update the DB to reflect this state so strictly 'isLocked' becomes true
+        // This is a side-effect in a read function, but ensures consistency.
+        await prisma.evaluationPeriod.update({
+            where: { year: currentYear },
+            data: { isLocked: true }
+        });
+        return false;
+    }
+
+    if (now < period.startDate) {
+        return false; // Not started yet
+    }
+
+    return true;
 }
 
 export async function getRespondentStatus() {

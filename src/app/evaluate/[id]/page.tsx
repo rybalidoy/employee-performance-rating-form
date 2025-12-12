@@ -45,6 +45,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
                 evaluatee={evaluatee}
                 employees={allEmployees}
                 initialEvaluation={evaluation}
+                showNominations={false}
             />
         </main>
     );

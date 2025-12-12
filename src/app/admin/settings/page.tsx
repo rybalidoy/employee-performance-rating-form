@@ -33,6 +33,8 @@ export default async function AdminSettingsPage({
                         initialStartDate={period?.startDate}
                         initialEndDate={period?.endDate}
                         initialIsLocked={period?.isLocked}
+                        initialIsManuallyUnlocked={period?.isManuallyUnlocked}
+                        initialIsManuallyLocked={period?.isManuallyLocked}
                         year={selectedYear}
                     />
                 </div>

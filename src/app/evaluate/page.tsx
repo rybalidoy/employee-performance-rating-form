@@ -2,6 +2,7 @@ import { getEmployees, getSession, getExistingEvaluation, getEvaluatorHistory, g
 import BulkEvaluationTable from "@/components/BulkEvaluationTable";
 import RawDataViewer from "@/components/RawDataViewer";
 import EvaluationDashboard from "@/components/EvaluationDashboard";
+import NomineeForm from "@/components/NomineeForm";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 
@@ -24,23 +25,33 @@ export default async function EvaluatePage({
     // Fetch Period to check lock status
     const period = await getEvaluationPeriod(selectedYear);
     const now = new Date();
+    let isLocked = true; // Initialize as locked by default
     // Open if period exists and we are within range.
     // If no period set for that year, is it locked?
     // Let's assume default is OPEN if current year, but LOCKED if past year?
     // Safer: dependent on admin settings. 
     // Implementation Plan: "Logic: Open if now >= startDate && now <= endDate".
     // Check lock status from database
-    let isLocked = true;
     if (period) {
-        // Check explicit lock state first
-        if (period.isLocked) {
+        const now = new Date();
+        // 1. Check Manual Force Lock
+        if (period.isManuallyLocked) {
             isLocked = true;
-        } else {
-            // If not explicitly locked, check date range
+        }
+        // 2. Check System Auto Lock
+        else if (period.isLocked) {
+            isLocked = true;
+        }
+        // 3. Check Manual Unlock Override (Bypass date check)
+        else if (period.isManuallyUnlocked) {
+            isLocked = false;
+        }
+        else {
+            // 4. Default Date Check
             if (now >= period.startDate && now <= period.endDate) {
                 isLocked = false;
             } else {
-                isLocked = true; // Outside date range
+                isLocked = true;
             }
         }
     } else {
@@ -102,19 +113,15 @@ export default async function EvaluatePage({
     } else {
         // Admin/DivHead View
         const showRawData = session.role === "Division Head" || session.role === "Assistant Division Head";
+
+        // Fetch Admin's own nominations
+        const { nominations } = await getExistingEvaluation(evaluatorId, 0);
+
         let evaluations: any[] = [];
         if (showRawData) {
-            const stats = await import("../actions").then(m => m.getDashboardStats());
-            // NOTE: getDashboardStats defaults to current year. We might need to update it to accept year too?
-            // User requested "users can also see past records". 
-            // For now, let's list evaluations from 'history' which WE DID fetch with year.
-            evaluations = history; // 'history' contains the evaluations made by THIS evaluator.
-            // Wait, RawDataViewer usually shows ALL evaluations for the company?
-            // "Division Head sees...". If they want to see company stats for past years, we need to update getDashboardStats.
-            // But here, 'evaluations' variable was filled from getDashboardStats().
-            // Let's update evaluations logic if needed. 
+            // ... (keep existing logic)
             // For now, relying on 'history' (my evaluations) for the TABLE. 
-            // Detailed stats viewing is likely on Dashboard page, not Evaluate page.
+            evaluations = history;
         }
 
         return (
@@ -134,7 +141,16 @@ export default async function EvaluatePage({
                     </div>
                 )}
 
-                <div className="max-w-7xl mx-auto">
+                <div className="max-w-7xl mx-auto space-y-8">
+                    {/* Admin Nominee Form */}
+                    <NomineeForm
+                        evaluator={evaluator}
+                        employees={employees}
+                        initialNominees={nominations}
+                        isLocked={isLocked}
+                        initialEvaluations={history}
+                    />
+
                     <BulkEvaluationTable
                         employees={employees}
                         evaluator={evaluator}
