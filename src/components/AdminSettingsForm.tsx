@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { setEvaluationPeriod, unlockEvaluationPeriod, lockEvaluationPeriod } from "@/app/actions";
 import { useRouter } from "next/navigation";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 type Props = {
-    initialStartDate?: Date;
-    initialEndDate?: Date;
+    initialStartDate?: Date | null;
+    initialEndDate?: Date | null;
     initialIsLocked?: boolean;
     initialIsManuallyUnlocked?: boolean;
     initialIsManuallyLocked?: boolean;
@@ -14,6 +15,7 @@ type Props = {
 };
 
 export default function AdminSettingsForm({ initialStartDate, initialEndDate, initialIsLocked = false, initialIsManuallyUnlocked = false, initialIsManuallyLocked = false, year }: Props) {
+    // Date state management - handle null dates
     const [startDate, setStartDate] = useState(initialStartDate ? new Date(initialStartDate).toISOString().split('T')[0] : "");
     const [endDate, setEndDate] = useState(initialEndDate ? new Date(initialEndDate).toISOString().split('T')[0] : "");
     const [saving, setSaving] = useState(false);
@@ -23,10 +25,28 @@ export default function AdminSettingsForm({ initialStartDate, initialEndDate, in
     const currentYear = new Date().getFullYear();
     const isCurrentYear = year === currentYear;
 
-    // Check lock state from database
-    const isLocked = initialIsLocked;
-    const isManuallyUnlocked = initialIsManuallyUnlocked;
-    const isManuallyLocked = initialIsManuallyLocked;
+    // Use local state for immediate UI updates, initialized from props
+    // We expect the server actions to return the updated object to keep this in sync
+    const [isLocked, setIsLocked] = useState(initialIsLocked);
+    const [isManuallyUnlocked, setIsManuallyUnlocked] = useState(initialIsManuallyUnlocked);
+    const [isManuallyLocked, setIsManuallyLocked] = useState(initialIsManuallyLocked);
+
+    // Dialog state
+    const [dialogConfig, setDialogConfig] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        onConfirm: () => void;
+        confirmText: string;
+        confirmColor: "red" | "green" | "blue";
+    }>({
+        isOpen: false,
+        title: "",
+        message: "",
+        onConfirm: () => { },
+        confirmText: "Confirm",
+        confirmColor: "blue"
+    });
 
     // Derived effective state for UI
     const isSystemLocked = isLocked || isManuallyLocked;
@@ -57,17 +77,27 @@ export default function AdminSettingsForm({ initialStartDate, initialEndDate, in
     const handleSave = async () => {
         setSaving(true);
         try {
-            if (!startDate || !endDate) {
-                alert("Please select both start and end dates.");
+            // Allow saving with null dates (cleared dates)
+            const sDate = startDate ? new Date(startDate) : null;
+            const eDate = endDate ? new Date(endDate) : null;
+
+            // Validation: either both set or both null
+            if ((sDate && !eDate) || (!sDate && eDate)) {
+                alert("Please set both start and end dates, or clear both.");
                 return;
             }
 
-            if (startDate > endDate) {
+            if (sDate && eDate && sDate > eDate) {
                 alert("Start date cannot be after end date.");
                 return;
             }
 
-            await setEvaluationPeriod(year, new Date(startDate), new Date(endDate));
+            const updatedPeriod = await setEvaluationPeriod(year, sDate, eDate);
+            // Update lock states from response
+            setIsLocked(updatedPeriod.isLocked);
+            setIsManuallyUnlocked(updatedPeriod.isManuallyUnlocked);
+            setIsManuallyLocked(updatedPeriod.isManuallyLocked);
+
             alert("Settings saved successfully.");
             router.refresh();
         } catch (e) {
@@ -79,39 +109,71 @@ export default function AdminSettingsForm({ initialStartDate, initialEndDate, in
     };
 
     const handleUnlock = async () => {
-        if (!confirm("This will unlock the evaluation period for the current year. Continue?")) {
-            return;
-        }
+        console.log("Unlock button clicked");
+        setDialogConfig({
+            isOpen: true,
+            title: "Unlock Evaluation Period",
+            message: "This will unlock the evaluation period and clear the date range. Continue?",
+            confirmText: "Unlock",
+            confirmColor: "green",
+            onConfirm: async () => {
+                setDialogConfig(prev => ({ ...prev, isOpen: false }));
+                setToggling(true);
+                try {
+                    console.log("Calling unlockEvaluationPeriod with year:", year);
+                    const updatedPeriod = await unlockEvaluationPeriod(year);
+                    console.log("Received updatedPeriod:", updatedPeriod);
+                    // Immediate UI update
+                    setIsLocked(updatedPeriod.isLocked);
+                    setIsManuallyUnlocked(updatedPeriod.isManuallyUnlocked);
+                    setIsManuallyLocked(updatedPeriod.isManuallyLocked);
 
-        setToggling(true);
-        try {
-            await unlockEvaluationPeriod(year);
-            alert("Evaluation period unlocked successfully.");
-            router.refresh();
-        } catch (e: any) {
-            console.error(e);
-            alert(e.message || "Failed to unlock evaluation period.");
-        } finally {
-            setToggling(false);
-        }
+                    // Clear date inputs since unlock resets dates to null
+                    setStartDate("");
+                    setEndDate("");
+
+                    alert("Evaluation period unlocked and dates cleared.");
+                    router.refresh();
+                } catch (e: any) {
+                    console.error(e);
+                    alert(e.message || "Failed to unlock evaluation period.");
+                } finally {
+                    setToggling(false);
+                }
+            }
+        });
     };
 
     const handleLock = async () => {
-        if (!confirm("This will lock the evaluation period. Users will not be able to submit evaluations. Continue?")) {
-            return;
-        }
+        console.log("Lock button clicked");
+        setDialogConfig({
+            isOpen: true,
+            title: "Lock Evaluation Period",
+            message: "This will lock the evaluation period. Users will not be able to submit evaluations. Continue?",
+            confirmText: "Lock",
+            confirmColor: "red",
+            onConfirm: async () => {
+                setDialogConfig(prev => ({ ...prev, isOpen: false }));
+                setToggling(true);
+                try {
+                    console.log("Calling lockEvaluationPeriod with year:", year);
+                    const updatedPeriod = await lockEvaluationPeriod(year);
+                    console.log("Received updatedPeriod:", updatedPeriod);
+                    // Immediate UI update
+                    setIsLocked(updatedPeriod.isLocked);
+                    setIsManuallyUnlocked(updatedPeriod.isManuallyUnlocked);
+                    setIsManuallyLocked(updatedPeriod.isManuallyLocked);
 
-        setToggling(true);
-        try {
-            await lockEvaluationPeriod(year);
-            alert("Evaluation period locked successfully.");
-            router.refresh();
-        } catch (e: any) {
-            console.error(e);
-            alert(e.message || "Failed to lock evaluation period.");
-        } finally {
-            setToggling(false);
-        }
+                    alert("Evaluation period locked successfully.");
+                    router.refresh();
+                } catch (e: any) {
+                    console.error(e);
+                    alert(e.message || "Failed to lock evaluation period.");
+                } finally {
+                    setToggling(false);
+                }
+            }
+        });
     };
 
     return (
@@ -203,6 +265,7 @@ export default function AdminSettingsForm({ initialStartDate, initialEndDate, in
                     <>
                         {isSystemLocked ? (
                             <button
+                                type="button"
                                 onClick={handleUnlock}
                                 disabled={toggling}
                                 className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-bold transition-all disabled:opacity-50 flex items-center gap-2"
@@ -215,6 +278,7 @@ export default function AdminSettingsForm({ initialStartDate, initialEndDate, in
                             </button>
                         ) : (
                             <button
+                                type="button"
                                 onClick={handleLock}
                                 disabled={toggling}
                                 className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-bold transition-all disabled:opacity-50 flex items-center gap-2"
@@ -250,6 +314,16 @@ export default function AdminSettingsForm({ initialStartDate, initialEndDate, in
                     )}
                 </div>
             )}
+
+            <ConfirmDialog
+                isOpen={dialogConfig.isOpen}
+                title={dialogConfig.title}
+                message={dialogConfig.message}
+                onConfirm={dialogConfig.onConfirm}
+                onCancel={() => setDialogConfig(prev => ({ ...prev, isOpen: false }))}
+                confirmText={dialogConfig.confirmText}
+                confirmColor={dialogConfig.confirmColor}
+            />
         </div>
     );
 }

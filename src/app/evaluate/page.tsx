@@ -33,8 +33,7 @@ export default async function EvaluatePage({
     // Implementation Plan: "Logic: Open if now >= startDate && now <= endDate".
     // Check lock status from database
     if (period) {
-        const now = new Date();
-        // 1. Check Manual Force Lock
+        // 1. Check Manual Force Lock (highest priority)
         if (period.isManuallyLocked) {
             isLocked = true;
         }
@@ -47,11 +46,16 @@ export default async function EvaluatePage({
             isLocked = false;
         }
         else {
-            // 4. Default Date Check
-            if (now >= period.startDate && now <= period.endDate) {
-                isLocked = false;
+            // 4. Default Date Check - only if dates exist
+            if (period.startDate && period.endDate) {
+                if (now >= period.startDate && now <= period.endDate) {
+                    isLocked = false;
+                } else {
+                    isLocked = true;
+                }
             } else {
-                isLocked = true;
+                // No dates set - default to open (unless locked above)
+                isLocked = false;
             }
         }
     } else {

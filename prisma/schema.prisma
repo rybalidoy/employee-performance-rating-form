@@ -64,8 +64,8 @@ model Nomination {
 model EvaluationPeriod {
   id        Int      @id @default(autoincrement())
   year      Int      @unique
-  startDate DateTime
-  endDate   DateTime
+  startDate DateTime?
+  endDate   DateTime?
   isLocked  Boolean  @default(false) // System/Auto lock (e.g. date expired)
   isManuallyLocked Boolean @default(false) // Admin force lock overrides everything
   isManuallyUnlocked Boolean @default(false) // Admin force unlock overrides date check

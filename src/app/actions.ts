@@ -452,12 +452,15 @@ export async function getEvaluationPeriod(year?: number) {
     });
 }
 
-export async function setEvaluationPeriod(year: number, startDate: Date, endDate: Date) {
-    return await prisma.evaluationPeriod.upsert({
+export async function setEvaluationPeriod(year: number, startDate: Date | null, endDate: Date | null) {
+    const period = await prisma.evaluationPeriod.upsert({
         where: { year },
         update: { startDate, endDate },
         create: { year, startDate, endDate }
     });
+    revalidatePath('/admin/settings');
+    revalidatePath('/evaluate');
+    return period;
 }
 
 export async function unlockEvaluationPeriod(year: number) {
@@ -470,32 +473,40 @@ export async function unlockEvaluationPeriod(year: number) {
 
     const period = await getEvaluationPeriod(year);
     if (!period) {
-        // Create default period if missing
-        return await prisma.evaluationPeriod.create({
+        // Create period with null dates when unlocking
+        const newPeriod = await prisma.evaluationPeriod.create({
             data: {
                 year,
-                startDate: new Date(year, 10, 1),
-                endDate: new Date(year, 10, 30),
+                startDate: null,
+                endDate: null,
                 isLocked: false,
                 isManuallyUnlocked: true
             }
         });
+        revalidatePath('/admin/settings');
+        revalidatePath('/evaluate');
+        return newPeriod;
     }
 
     // Unlock:
     // 1. Clear isLocked (Auto/System lock)
     // 2. Clear isManuallyLocked (Force lock)
     // 3. Set isManuallyUnlocked = true (Allow bypass of date check)
-    // 4. PRESERVE DATES (Do not reset or extend)
+    // 4. RESET DATES TO NULL (clear the date range)
 
-    return await prisma.evaluationPeriod.update({
+    const result = await prisma.evaluationPeriod.update({
         where: { year },
         data: {
+            startDate: null,
+            endDate: null,
             isLocked: false,
             isManuallyLocked: false,
             isManuallyUnlocked: true
         }
     });
+    revalidatePath('/admin/settings');
+    revalidatePath('/evaluate');
+    return result;
 }
 
 export async function lockEvaluationPeriod(year: number) {
@@ -508,22 +519,26 @@ export async function lockEvaluationPeriod(year: number) {
 
     const period = await getEvaluationPeriod(year);
     if (!period) {
-        // Create default period if missing (starts as locked)
-        return await prisma.evaluationPeriod.create({
+        // Create period with null dates (starts as locked)
+        const newPeriod = await prisma.evaluationPeriod.create({
             data: {
                 year,
-                startDate: new Date(year, 10, 1),
-                endDate: new Date(year, 10, 30),
+                startDate: null,
+                endDate: null,
                 isLocked: true,
+                isManuallyLocked: true,
                 isManuallyUnlocked: false
             }
         });
+        revalidatePath('/admin/settings');
+        revalidatePath('/evaluate');
+        return newPeriod;
     }
 
     // Manual Lock:
     // Set isManuallyLocked = true.
     // We also set isLocked = true for good measure, and clear isManuallyUnlocked.
-    return await prisma.evaluationPeriod.update({
+    const result = await prisma.evaluationPeriod.update({
         where: { year },
         data: {
             isManuallyLocked: true,
@@ -531,6 +546,9 @@ export async function lockEvaluationPeriod(year: number) {
             isManuallyUnlocked: false
         }
     });
+    revalidatePath('/admin/settings');
+    revalidatePath('/evaluate');
+    return result;
 }
 
 // Check if evaluation is open based on locking rules
@@ -557,6 +575,12 @@ export async function isEvaluationOpen() {
         return true;
     }
 
+    // If no dates are set, the period is open (unless manually locked above)
+    if (!period.startDate || !period.endDate) {
+        return true;
+    }
+
+    // Check date range only if dates exist
     if (now > period.endDate) {
         // Auto-lock trigger
         // We should update the DB to reflect this state so strictly 'isLocked' becomes true
